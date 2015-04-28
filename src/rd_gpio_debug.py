@@ -4,7 +4,8 @@
 
 import time
 
-from rd_logger import log
+import logging
+logger = logging.getLogger('rd.gpio')
 
 class GPIO:
 	""" GPIO Debug class """
@@ -13,32 +14,33 @@ class GPIO:
 	IN = "GPIO.IN"
 	OUT = "GPIO.OUT"
 	FALLING = "GPIO.FALLING"
+	RISING = "GPIO.RISING"
 	
 	def __getattr__(self, name):
-		log("[{}] Get attr {}".format(time.time(), name), src="GPIO")
+		logger.debug("Get attr {}".format(name))
 		
 	def __setattr__(self, name, value):
-		log("Set attr {} = {}".format(name, value), src="GPIO")
+		logger.debug("Set attr {} = {}".format(name, value))
 		
 	@staticmethod
 	def output(pin, value):
-		log("Set pin {} to value {}".format(pin, value), src="GPIO")
+		logger.debug("Set pin {} to value {}".format(pin, value))
 	
 	@staticmethod
 	def setmode(mode):
-		log("Set mode to {}".format(mode), src="GPIO")
+		logger.debug("Set mode to {}".format(mode))
 	
 	@staticmethod
 	def setup(pin, mode, pull_up_down="none"):
-		log("Setup pin {} to mode {} (pud = {})".format(pin, mode, pull_up_down), src="GPIO")
+		logger.debug("Setup pin {} to mode {} (pud = {})".format(pin, mode, pull_up_down))
 	
 	@staticmethod
 	def wait_for_edge(pin, edge):
-		log("Wait for edge {} on pin {}...".format(edge, pin), src="GPIO")
+		logger.debug("Wait for edge {} on pin {}...".format(edge, pin))
 		time.sleep(1)
-		log("...so here you are!", src="GPIO")
+		logger.debug("...so here you are!")
 
 	@staticmethod
 	def cleanup():
-		log("Cleanup", src="GPIO")
+		logger.debug("Cleanup")
 		

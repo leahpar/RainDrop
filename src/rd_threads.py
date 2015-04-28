@@ -3,46 +3,53 @@
 #--------------------------------------------------------------
 import threading, time
 from rd_const import CST
-from rd_logger import log
+
+import logging
+logger = logging.getLogger('rd.threads')
 
 class ValveController(threading.Thread):
 	""" Valce control thread """
 	
 	def __init__(self, GPIO, drops):
-		log("ValveController : __init__", src="ValveController")
+		logger.debug("ValveController : __init__")
 		threading.Thread.__init__(self)
 		self.drops = drops
 		self.GPIO = GPIO
 	
 	def run(self):
-		log("ValveController : run", src="ValveController")
+		logger.debug("ValveController : run")
 		
 		for delay,size in self.drops:
-			log("ValveController : drop (delay {} ; size {})".format(delay, size), src="ValveController")
+			logger.info("ValveController : drop (delay {} ; size {})".format(delay, size))
 			time.sleep(delay/1000.0);
 			self.GPIO.output(CST.RPI_PIN_VALVE, 1)
 			time.sleep(size/1000.0)
 			self.GPIO.output(CST.RPI_PIN_VALVE, 0)
-		log("ValveController : end run", src="ValveController")
+		logger.debug("ValveController : end run")
 
 class ReflexController(threading.Thread):
 	""" Reflex control thread """
 	
-	def __init__(self, GPIO, tps_reflex):
-		log("ReflexController : __init__", src="ReflexController")
+	def __init__(self, GPIO, tps_reflex, option_manual):
+		logger.debug("ReflexController : __init__")
 		threading.Thread.__init__(self)
 		self.tps_reflex = tps_reflex
 		self.GPIO = GPIO
+		self.option_manual = option_manual
 	
 	def run(self):
-		log("ReflexController : run", src="ReflexController")
-		log("ReflexController : wait tps_reflex {}ms".format(self.tps_reflex), src="ReflexController")
-		time.sleep(self.tps_reflex/1000.0)
+		logger.debug("ReflexController : run")
+		if self.option_manual:
+			self.GPIO.wait_for_edge(CST.RPI_PIN_TRIGGER, self.GPIO.FALLING)
+			logger.debug("ReflexController : manual shot")
+		else:
+			logger.debug("ReflexController : wait tps_reflex {}ms".format(self.tps_reflex))
+			time.sleep(self.tps_reflex/1000.0)
 		self.shot()
-		log("ReflexController : run end", src="ReflexController")
+		logger.debug("ReflexController : run end")
 	
 	def shot(self):
-		log("ReflexController : shot", src="ReflexController")
+		logger.info("ReflexController : shot")
 		""" Take a picture """
 		self.GPIO.output(CST.RPI_PIN_REFLEX, 1)
 		time.sleep(0.1)
