@@ -14,6 +14,7 @@ class GPIO:
 	OUT = "GPIO.OUT"
 	FALLING = "GPIO.FALLING"
 	RISING = "GPIO.RISING"
+	BOTH = "GPIO.BOTH"
 	
 	def __getattr__(self, name):
 		logger.debug("Get attr {}".format(name))
@@ -40,6 +41,10 @@ class GPIO:
 		time.sleep(r/1000.0)
 		logger.debug("...so here you are!")
 
+	@staticmethod
+	def add_event_detect(pin, mode, callback, bouncetime):
+		logger.debug("Add event detect pin {} mode {}".format(pin, mode))
+	
 	@staticmethod
 	def cleanup():
 		logger.debug("Cleanup")

@@ -11,10 +11,10 @@ import getopt
 #--------------------------------------------------------------
  
 # Times
-tps_reflex = 650		# Reflex trigger
+tps_reflex = 1000 # Reflex trigger
  
-# Drops : (delay with last drop, size of the drop)
-drops = [
+# Droplets : (delay with last droplet, size of the droplet)
+droplets = [
 	(0,	50),
 	(150, 80),
 ]
@@ -31,13 +31,6 @@ class RdFormatter(logging.Formatter):
 	dt = current_milli_time()
 	def formatTime(self, record, datefmt=None):
 		return "{0:05}".format(current_milli_time()-self.dt)
-		# ct = self.converter(record.created)
-		# if datefmt:
-			# s = ct.strftime(datefmt)
-		# else:
-			# t = ct.strftime("%Y-%m-%d %H:%M:%S")
-			# s = "%s.%03d" % (t, record.msecs)
-		# return s
 
 		  
 # http://sametmax.com/ecrire-des-logs-en-python/
@@ -48,12 +41,73 @@ steam_handler = logging.StreamHandler()
 steam_handler.setFormatter(formatter)
 logger.addHandler(steam_handler)
 
+
+#--------------------------------------------------------------
+# led controller
+#--------------------------------------------------------------
+
+def led(r, o, g):
+	logger.debug("LED {} {} {}".format(r, o, g))
+	GPIO.output(CST.RPI_PIN_LED_R, int(r))
+	GPIO.output(CST.RPI_PIN_LED_O, int(o))
+	GPIO.output(CST.RPI_PIN_LED_G, int(g))
+
+#--------------------------------------------------------------
+# Valve controller
+#--------------------------------------------------------------
+
+def valve_run():
+	""" drop a droplet """
+	led (1, 1, 0)
+	for delay,size in droplets:
+		logger.debug("ValveController : drop (delay {} ; size {})".format(delay, size))
+		time.sleep(delay/1000.0);
+		GPIO.output(CST.RPI_PIN_VALVE, 1)
+		time.sleep(size/1000.0)
+		GPIO.output(CST.RPI_PIN_VALVE, 0)
+
+#--------------------------------------------------------------
+# Reflex controller
+#--------------------------------------------------------------
+def reflex_run():
+	""" Take a picture """
+	led (1, 0, 0)
+	logger.debug("Reflex shot")
+	GPIO.output(CST.RPI_PIN_REFLEX, 1)
+	time.sleep(0.2)
+	GPIO.output(CST.RPI_PIN_REFLEX, 0)
+	led (1, 1, 1)
+
+#--------------------------------------------------------------
+# Callback on GPIO start
+#--------------------------------------------------------------
+def rpi_callback(pin):
+	global lock
+	if GPIO.input(CST.RPI_PIN_TRIGGER):
+		if lock:
+			lock = False
+			logger.debug("DOWN")
+			if option_manual:
+				reflex_run()
+	else:
+		if not lock:
+			lock = True
+			logger.debug("UP")
+			dt = current_milli_time()
+			valve_run()
+			dt2 = current_milli_time() - dt
+			if not option_manual:
+				time.sleep((tps_reflex - dt2)/1000.0)
+				reflex_run()
+
+
+
 #--------------------------------------------------------------
 # MAIN
 #--------------------------------------------------------------
 
 help = """
-  --verbose=<level> : set log level to INFO|DEBUG|WARNING(default)|ERROR
+  --verbose=<level> : set log level to INFO(default)|DEBUG|WARNING|ERROR
   --loop=<N>        : run N loop(s), default 1, 0 = infinitly
   --fake-gpio       : do not import GPIO but use fake module
   --manual          : take the photo on button release (use INFO level log to get milisec value)
@@ -103,7 +157,6 @@ if not option_fake_gpio:
 	import RPi.GPIO as GPIO
 else:
 	from rd_gpio_debug import GPIO
-from rd_threads import ValveController, ReflexController
 
 steam_handler.setLevel(option_verbose)
 logger.info("START")
@@ -111,51 +164,24 @@ stats_min = 0
 stats_max = 0
 stats_sum = 0
 
+lock = False
+
 try:
 	# init RPI
 	GPIO.setmode(GPIO.BCM)
 	GPIO.setup(CST.RPI_PIN_TRIGGER, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-	GPIO.setup(CST.RPI_PIN_VALVE, GPIO.OUT)
 	GPIO.setup(CST.RPI_PIN_REFLEX, GPIO.OUT)
-	GPIO.setup(CST.RPI_PIN_LED1, GPIO.OUT)
-
-	i = 0
-	while (i < option_loop_count) or (option_loop_count == 0):
-		i += 1
-		logger.info("loop {}/{}".format(i, option_loop_count))
-		
-		# Valve controller
-		valve_thread = ValveController(GPIO, drops)
-
-		# Reflex controller
-		reflex_controller = ReflexController(GPIO, tps_reflex, option_manual)
-
-		# Wait for start button
-		logger.info("Wait for start button")
-		GPIO.wait_for_edge(CST.RPI_PIN_TRIGGER, GPIO.RISING)
-		
-		# let's go
-		logger.debug("launch threads")
-		valve_thread.start()
-		reflex_controller.start()
-
-		# Wait for threads
-		logger.debug("wait threads join")
-		valve_thread.join()
-		reflex_controller.join()
-		
-		# Stats
-		stats_tmp = reflex_controller.time
-		stats_sum += stats_tmp
-		if stats_min > 0:
-			stats_min = min(stats_tmp, stats_min)
-		else:
-			stats_min = stats_tmp
-		stats_max = max(stats_tmp, stats_max)
-		# Display stats only if there is something to display (and avoid div by 0	)
-		if i > 1:
-			logger.info("stats :  min / avg  / max")
-			logger.info("stats : {}ms / {}ms / {}ms".format(stats_min, stats_sum/(i-1), stats_max))
+	GPIO.setup(CST.RPI_PIN_VALVE, GPIO.OUT)
+	GPIO.setup(CST.RPI_PIN_LED_R, GPIO.OUT)
+	GPIO.setup(CST.RPI_PIN_LED_O, GPIO.OUT)
+	GPIO.setup(CST.RPI_PIN_LED_G, GPIO.OUT)
+	
+	led(1, 1, 1)
+	
+	GPIO.add_event_detect(CST.RPI_PIN_TRIGGER, GPIO.BOTH, rpi_callback, 100)
+	
+	while True:
+		time.sleep(1)
 	
 except KeyboardInterrupt:
 	# Ctrl+C
