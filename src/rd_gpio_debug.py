@@ -11,6 +11,7 @@ class GPIO:
 	""" GPIO Debug class """
 	BCM = "GPIO.BCM"
 	PUD_DOWN = "GPIO.PUD_DOWN"
+	PUD_UP = "GPIO.PUD_UP"
 	IN = "GPIO.IN"
 	OUT = "GPIO.OUT"
 	FALLING = "GPIO.FALLING"

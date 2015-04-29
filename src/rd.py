@@ -54,6 +54,7 @@ logger.addHandler(steam_handler)
 
 help = """
   --verbose=<level> : set log level to INFO|DEBUG|WARNING(default)|ERROR
+  --loop=<N>        : run N loop(s), default 1, 0 = infinitly
   --fake-gpio       : do not import GPIO but use fake module
   --manual          : take the photo on button release (use INFO level log to get milisec value)
   --help            : display this message
@@ -62,6 +63,7 @@ help = """
 option_verbose = logging.WARNING
 option_fake_gpio = False
 option_manual = False
+option_loop_count = 1
 
 #--------------------------------------------------------------
 # START PROGRAM
@@ -69,7 +71,7 @@ option_manual = False
 
 # handle arguments
 try:
-	opts, args = getopt.getopt(sys.argv[1:], "h", ["verbose=", "fake-gpio", "manual", "help"])
+	opts, args = getopt.getopt(sys.argv[1:], "h", ["verbose=", "loop=", "fake-gpio", "manual", "help"])
 except getopt.GetoptError as err:
 	print err
 	print help
@@ -91,6 +93,8 @@ for opt, arg in opts:
 		option_fake_gpio = True
 	elif opt == "--manual":
 		option_manual = True
+	elif opt == "--loop":
+		option_loop_count = int(arg)
 
 # import modules
 # TODO : if not option_verbose:
@@ -104,12 +108,6 @@ from rd_threads import ValveController, ReflexController
 steam_handler.setLevel(option_verbose)
 logger.info("START")
 
-# Valve controller
-valve_thread = ValveController(GPIO, drops)
-
-# Reflex controller
-reflex_controller = ReflexController(GPIO, tps_reflex, option_manual)
-
 try:
 	# init RPI
 	GPIO.setmode(GPIO.BCM)
@@ -118,26 +116,38 @@ try:
 	GPIO.setup(CST.RPI_PIN_REFLEX, GPIO.OUT)
 	GPIO.setup(CST.RPI_PIN_LED1, GPIO.OUT)
 
-	# Wait for start button
-	logger.info("Wait for start button")
-	GPIO.wait_for_edge(CST.RPI_PIN_TRIGGER, GPIO.RISING)
-	
-	# let's go
-	logger.debug("launch threads")
-	valve_thread.start()
-	reflex_controller.start()
+	i = 0
+	while (i < option_loop_count) or (option_loop_count == 0):
+		i += 1
+		logger.info("loop {}/{}".format(i, option_loop_count))
+		
+		# Valve controller
+		valve_thread = ValveController(GPIO, drops)
 
-	# Fin du traitement
-	logger.debug("wait threads join")
-	valve_thread.join()
-	reflex_controller.join()
+		# Reflex controller
+		reflex_controller = ReflexController(GPIO, tps_reflex, option_manual)
+
+		# Wait for start button
+		logger.info("Wait for start button")
+		GPIO.wait_for_edge(CST.RPI_PIN_TRIGGER, GPIO.RISING)
+		
+		# let's go
+		logger.debug("launch threads")
+		valve_thread.start()
+		reflex_controller.start()
+
+		# Fin du traitement
+		logger.debug("wait threads join")
+		valve_thread.join()
+		reflex_controller.join()
 	
 except KeyboardInterrupt:
 	# Ctrl+C
 	logger.warning("user exit")
 
-except:
-	logger.error("Exception occured!")
+#except Exception, e:
+#	logger.error("Exception occured!")
+#	print e
 	
 finally:
 	GPIO.cleanup()
