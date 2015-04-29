@@ -2,9 +2,7 @@
 # Fake GPIO class for debug
 #--------------------------------------------------------------
 
-import time
-
-import logging
+import time, random, logging
 logger = logging.getLogger('rd.gpio')
 
 class GPIO:
@@ -37,8 +35,9 @@ class GPIO:
 	
 	@staticmethod
 	def wait_for_edge(pin, edge):
-		logger.debug("Wait for edge {} on pin {}...".format(edge, pin))
-		time.sleep(1)
+		r = (random.randrange(500, 1500))
+		logger.debug("Wait for edge {} on pin {} ({}ms)...".format(edge, pin, r))
+		time.sleep(r/1000.0)
 		logger.debug("...so here you are!")
 
 	@staticmethod

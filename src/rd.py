@@ -107,6 +107,9 @@ from rd_threads import ValveController, ReflexController
 
 steam_handler.setLevel(option_verbose)
 logger.info("START")
+stats_min = 0
+stats_max = 0
+stats_sum = 0
 
 try:
 	# init RPI
@@ -136,10 +139,23 @@ try:
 		valve_thread.start()
 		reflex_controller.start()
 
-		# Fin du traitement
+		# Wait for threads
 		logger.debug("wait threads join")
 		valve_thread.join()
 		reflex_controller.join()
+		
+		# Stats
+		stats_tmp = reflex_controller.time
+		stats_sum += stats_tmp
+		if stats_min > 0:
+			stats_min = min(stats_tmp, stats_min)
+		else:
+			stats_min = stats_tmp
+		stats_max = max(stats_tmp, stats_max)
+		# Display stats only if there is something to display (and avoid div by 0	)
+		if i > 1:
+			logger.info("stats :  min / avg  / max")
+			logger.info("stats : {}ms / {}ms / {}ms".format(stats_min, stats_sum/(i-1), stats_max))
 	
 except KeyboardInterrupt:
 	# Ctrl+C
@@ -151,5 +167,6 @@ except KeyboardInterrupt:
 	
 finally:
 	GPIO.cleanup()
+
 
 logger.info("END")

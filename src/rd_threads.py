@@ -37,6 +37,7 @@ class ReflexController(threading.Thread):
 		self.GPIO = GPIO
 		self.option_manual = option_manual
 		self.dt = 0
+		self.time = 0
 	
 	def run(self):
 		logger.debug("ReflexController : run")
@@ -44,10 +45,12 @@ class ReflexController(threading.Thread):
 			self.dt = current_milli_time()
 			self.GPIO.wait_for_edge(CST.RPI_PIN_TRIGGER, self.GPIO.FALLING)
 			logger.debug("ReflexController : manual shot")
-			logger.info("dt = {}ms".format(current_milli_time() - self.dt))
+			self.time = current_milli_time() - self.dt
+			logger.info("dt = {}ms".format(self.time))
 		else:
 			logger.debug("ReflexController : wait tps_reflex {}ms".format(self.tps_reflex))
 			time.sleep(self.tps_reflex/1000.0)
+
 		self.shot()
 		logger.debug("ReflexController : run end")
 	
