@@ -110,27 +110,32 @@ valve_thread = ValveController(GPIO, drops)
 # Reflex controller
 reflex_controller = ReflexController(GPIO, tps_reflex, option_manual)
 
-# init RPI
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(CST.RPI_PIN_TRIGGER, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.setup(CST.RPI_PIN_VALVE, GPIO.OUT)
-GPIO.setup(CST.RPI_PIN_REFLEX, GPIO.OUT)
-GPIO.setup(CST.RPI_PIN_LED1, GPIO.OUT)
+try:
+	# init RPI
+	GPIO.setmode(GPIO.BCM)
+	GPIO.setup(CST.RPI_PIN_TRIGGER, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+	GPIO.setup(CST.RPI_PIN_VALVE, GPIO.OUT)
+	GPIO.setup(CST.RPI_PIN_REFLEX, GPIO.OUT)
+	GPIO.setup(CST.RPI_PIN_LED1, GPIO.OUT)
 
-# Wait for start button
-logger.info("Wait for start button")
-GPIO.wait_for_edge(CST.RPI_PIN_TRIGGER, GPIO.RISING)
+	# Wait for start button
+	logger.info("Wait for start button")
+	GPIO.wait_for_edge(CST.RPI_PIN_TRIGGER, GPIO.RISING)
 
-# let's go
-logger.debug("launch threads")
-valve_thread.start()
-reflex_controller.start()
+	# let's go
+	logger.debug("launch threads")
+	valve_thread.start()
+	reflex_controller.start()
 
-# Fin du traitement
-logger.debug("wait threads join")
-valve_thread.join()
-reflex_controller.join()
+	# Fin du traitement
+	logger.debug("wait threads join")
+	valve_thread.join()
+	reflex_controller.join()
 
-GPIO.cleanup()
+except:
+	logger.error("EXIT")
+	
+finally:
+	GPIO.cleanup()
 
 logger.info("END")
